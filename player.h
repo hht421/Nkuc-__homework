@@ -21,6 +21,8 @@ public:
     virtual void resetMovement(); // 新增：重置移动状态
     virtual QPixmap getCurrentFrame() const; // 新增：获取当前帧
     virtual void takeDamage(int damage); // 新增：处理受伤
+    bool hasHitTarget() const { return hasHit; }  // 新增：获取是否已经造成伤害
+    void setHitTarget(bool hit) { hasHit = hit; }  // 新增：设置是否已经造成伤害
 
     // 属性
     float moveSpeed;      // 基础移动速度
@@ -49,16 +51,19 @@ protected:
     
     // 动画相关
     QTimer* animationTimer;
+    QTimer* attackCooldownTimer;  // 攻击冷却计时器
+    bool canAttack;               // 是否可以攻击
+    bool hasHit;                  // 新增：是否已经造成伤害
     int currentFrame;
     int totalFrames;
     std::vector<QPixmap> walkFrames;
     std::vector<QPixmap> idleFrames;
     std::vector<QPixmap> jumpFrames;
-    std::vector<QPixmap> attackFrames;  // 新增：攻击动画帧
-    std::vector<QPixmap> deadFrames;    // 新增：死亡动画帧
+    std::vector<QPixmap> attackFrames;  // 攻击动画帧
+    std::vector<QPixmap> deadFrames;    // 死亡动画帧
     bool isMoving;
     bool isJumping;
-    bool isDead;          // 新增：是否已死亡
+    bool isDead;          // 是否已死亡
     
     virtual void loadAnimationFrames();
     void updateAnimation();

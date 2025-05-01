@@ -29,11 +29,18 @@ Player::Player(bool isPlayer1) : QObject(), QGraphicsPixmapItem()
     isJumping = false;
     isAttacking = false;
     isDead = false;
+    canAttack = true;  // 初始可以攻击
     
     // 创建动画定时器
     animationTimer = new QTimer(this);
     QObject::connect(animationTimer, &QTimer::timeout, this, &Player::updateAnimation);
     animationTimer->start(50); // 每50毫秒更新一次动画（提高帧率）
+    
+    // 创建攻击冷却定时器
+    attackCooldownTimer = new QTimer(this);
+    QObject::connect(attackCooldownTimer, &QTimer::timeout, [this]() {
+        canAttack = true;  // 冷却结束，可以再次攻击
+    });
     
     // 加载动画帧
     loadAnimationFrames();
@@ -43,6 +50,7 @@ Player::~Player()
 {
     // 智能指针会自动清理武器
     delete animationTimer;
+    delete attackCooldownTimer;
 }
 
 void Player::loadAnimationFrames()
@@ -117,8 +125,9 @@ void Player::updateAnimation()
     } else if (isAttacking) {
         // 攻击动画
         currentFrame = (currentFrame + 1) % attackFrames.size();
-        if (currentFrame == attackFrames.size() - 1) {
+        if (currentFrame == 0) { // 当攻击动画回到第一帧时，结束攻击状态
             isAttacking = false;  // 攻击动画播放完毕
+            hasHit = false;       // 重置命中标记
         }
         setAnimationFrame(currentFrame);
     } else if (isJumping) {
@@ -239,9 +248,14 @@ void Player::updateDirection()
 
 void Player::attack()
 {
+    if(!canAttack || isDead) return;  // 如果正在冷却或已死亡，不能攻击
+    
     weapons[currentWeaponIndex]->attack();
     isAttacking = true;
+    hasHit = false;  // 重置命中标记
     currentFrame = 0;  // 重置动画帧
+    canAttack = false;  // 开始冷却
+    attackCooldownTimer->start(500);  // 设置0.5秒的冷却时间
 }
 
 void Player::switchWeapon()
@@ -445,4 +459,4 @@ void Player2::resetMovement()
 QPixmap Player2::getCurrentFrame() const
 {
     return Player::getCurrentFrame();
-}
+}    

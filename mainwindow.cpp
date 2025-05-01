@@ -217,7 +217,7 @@ void MainWindow::checkCollisions()
     }
 
     // 检查玩家之间的攻击碰撞
-    if (player1->isAttacking && !player2->isDeadState()) {
+    if (player1->isAttacking && !player2->isDeadState() && !player1->hasHitTarget()) {
         QRectF attackRect1 = player1->boundingRect();
         attackRect1.translate(player1->pos());
         QRectF player2Rect = player2->boundingRect();
@@ -225,10 +225,11 @@ void MainWindow::checkCollisions()
         
         if (attackRect1.intersects(player2Rect)) {
             player2->takeDamage(player1->getCurrentWeaponDamage());
+            player1->setHitTarget(true);  // 标记已经造成伤害
         }
     }
     
-    if (player2->isAttacking && !player1->isDeadState()) {
+    if (player2->isAttacking && !player1->isDeadState() && !player2->hasHitTarget()) {
         QRectF attackRect2 = player2->boundingRect();
         attackRect2.translate(player2->pos());
         QRectF player1Rect = player1->boundingRect();
@@ -236,6 +237,7 @@ void MainWindow::checkCollisions()
         
         if (attackRect2.intersects(player1Rect)) {
             player1->takeDamage(player2->getCurrentWeaponDamage());
+            player2->setHitTarget(true);  // 标记已经造成伤害
         }
     }
 }
@@ -276,6 +278,17 @@ void MainWindow::processMovement()
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
     if(gameOver) return; // 游戏结束后禁止按键
+
+    // 处理攻击键（添加防重复判断）
+    if (!event->isAutoRepeat()) {
+        if (event->key() == Qt::Key_Space) {
+            player1->attack();
+        }
+        if (event->key() == Qt::Key_Return) {
+            player2->attack();
+        }
+    }
+    
     
     // 将按下的键添加到集合中
     pressedKeys.insert(event->key());
