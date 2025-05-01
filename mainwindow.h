@@ -29,6 +29,8 @@ protected:
 
 private slots:
     void updateGame();
+    void checkSwordQiCollisions();
+    void updateSwordQiCharges();
 
 private:
     Ui::MainWindow *ui;
@@ -45,6 +47,15 @@ private:
     bool player1Moving;
     bool player2Moving;
     
+    // 剑气充能系统
+    int player1SwordQiCharges;  // 玩家1剑气存储次数
+    int player2SwordQiCharges;  // 玩家2剑气存储次数
+    QTimer *swordQiChargeTimer; // 剑气充能计时器
+    QGraphicsTextItem *player1SwordQiText; // 玩家1剑气次数显示
+    QGraphicsTextItem *player2SwordQiText; // 玩家2剑气次数显示
+    const int MAX_SWORD_QI_CHARGES = 5; // 最大剑气存储次数
+    const int SWORD_QI_CHARGE_TIME = 10000; // 充能时间（毫秒）
+    
     void setupGame();
     void initializePlayers();
     void createPlatforms();
@@ -52,5 +63,6 @@ private:
     void processMovement();
     void updateHealthDisplay();
     void checkGameOver();
+    void setupSwordQiCollisionCheck();
 };
 #endif // MAINWINDOW_H

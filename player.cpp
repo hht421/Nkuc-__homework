@@ -1,4 +1,5 @@
 #include "player.h"
+#include "swordqi.h"
 #include <QGraphicsScene>
 #include <QPixmap>
 #include <QDir>
@@ -257,6 +258,29 @@ void Player::attack()
     canAttack = false;  // 开始冷却
     attackCooldownTimer->start(500);  // 设置0.5秒的冷却时间
 }
+
+void Player::rangedAttack()
+{
+    if(!canAttack || isDead) return;  // 如果正在冷却或已死亡，不能攻击
+
+    // 创建剑气
+    SwordQi *swordQi = new SwordQi(facingRight, isPlayer1);
+    
+    // 设置剑气位置
+    if (facingRight) {
+        swordQi->setPos(x() + boundingRect().width(), y());
+    } else {
+        swordQi->setPos(x() - swordQi->boundingRect().width(), y());
+    }
+    scene()->addItem(swordQi);
+
+    isAttacking = true;
+    hasHit = false;  // 重置命中标记
+    currentFrame = 0;  // 重置动画帧
+    canAttack = false;  // 开始冷却
+    attackCooldownTimer->start(500);  // 设置0.5秒的冷却时间
+}
+
 
 void Player::switchWeapon()
 {

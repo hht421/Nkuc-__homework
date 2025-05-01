@@ -70,5 +70,7 @@
         <file>image/person1/person1_Walk (8).png</file>
         <file>image/person1/person1_Walk (9).png</file>
         <file>image/person1/person1_Walk (10).png</file>
+        <file>image/weapon/jianqi-1(1).png</file>
+        <file>image/weapon/jianqi-1(2).png</file>
     </qresource>
 </RCC>

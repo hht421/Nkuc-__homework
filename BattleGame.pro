@@ -12,12 +12,14 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     player.cpp \
+    swordqi.cpp \
     weapon.cpp \
     platform.cpp
 
 HEADERS += \
     mainwindow.h \
     player.h \
+    swordqi.h \
     weapon.h \
     platform.h
 
@@ -29,7 +31,8 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-DISTFILES +=
+DISTFILES += \
+    image/weapon/jianqi-1(1).png
 
 RESOURCES += \
     resources.qrc

@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include "swordqi.h"
 #include <QKeyEvent>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -13,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete swordQiChargeTimer;
     // 清理平台
     for(auto platform : platforms) {
         delete platform;
@@ -53,6 +55,9 @@ void MainWindow::setupGame()
     // 初始化玩家
     initializePlayers();
 
+    // 初始化剑气碰撞检测
+    setupSwordQiCollisionCheck();
+
     // 设置游戏定时器
     gameTimer = new QTimer(this);
     connect(gameTimer, &QTimer::timeout, this, &MainWindow::updateGame);
@@ -71,7 +76,32 @@ void MainWindow::setupGame()
     player2HealthText->setPos(700, 20);
     gameScene->addItem(player2HealthText);
     
+    // 初始化剑气充能系统
+    player1SwordQiCharges = MAX_SWORD_QI_CHARGES;
+    player2SwordQiCharges = MAX_SWORD_QI_CHARGES;
+
+    // 初始化剑气次数显示
+    player1SwordQiText = new QGraphicsTextItem();
+    player1SwordQiText->setDefaultTextColor(Qt::cyan);
+    player1SwordQiText->setFont(QFont("Arial", 16));
+    player1SwordQiText->setPos(20, 50);
+    gameScene->addItem(player1SwordQiText);
+
+    player2SwordQiText = new QGraphicsTextItem();
+    player2SwordQiText->setDefaultTextColor(Qt::magenta);
+    player2SwordQiText->setFont(QFont("Arial", 16));
+    player2SwordQiText->setPos(700, 50);
+    gameScene->addItem(player2SwordQiText);
+
+    // 设置剑气充能计时器
+    swordQiChargeTimer = new QTimer(this);
+    connect(swordQiChargeTimer, &QTimer::timeout, this, &MainWindow::updateSwordQiCharges);
+    swordQiChargeTimer->start(SWORD_QI_CHARGE_TIME);
+
     gameOver = false;
+    
+    // 更新显示
+    updateHealthDisplay();
 }
 
 void MainWindow::createPlatforms()
@@ -146,6 +176,25 @@ void MainWindow::updateHealthDisplay()
 {
     player1HealthText->setPlainText(QString("HP: %1").arg(player1->health));
     player2HealthText->setPlainText(QString("HP: %1").arg(player2->health));
+    
+    // 更新剑气次数显示
+    player1SwordQiText->setPlainText(QString("充能: %1").arg(player1SwordQiCharges));
+    player2SwordQiText->setPlainText(QString("充能: %1").arg(player2SwordQiCharges));
+}
+
+void MainWindow::updateSwordQiCharges()
+{
+    // 为玩家1充能
+    if (player1SwordQiCharges < MAX_SWORD_QI_CHARGES) {
+        player1SwordQiCharges++;
+        updateHealthDisplay(); // 更新显示
+    }
+
+    // 为玩家2充能
+    if (player2SwordQiCharges < MAX_SWORD_QI_CHARGES) {
+        player2SwordQiCharges++;
+        updateHealthDisplay(); // 更新显示
+    }
 }
 
 void MainWindow::checkCollisions()
@@ -287,8 +336,23 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         if (event->key() == Qt::Key_Return) {
             player2->attack();
         }
+        if (event->key() == Qt::Key_K) {
+            // 检查玩家1是否有剑气可用
+            if (player1SwordQiCharges > 0) {
+                player1->rangedAttack();
+                player1SwordQiCharges--;
+                updateHealthDisplay();
+            }
+        }
+        if (event->key() == Qt::Key_2) {
+            // 检查玩家2是否有剑气可用
+            if (player2SwordQiCharges > 0) {
+                player2->rangedAttack();
+                player2SwordQiCharges--;
+                updateHealthDisplay();
+            }
+        }
     }
-    
     
     // 将按下的键添加到集合中
     pressedKeys.insert(event->key());
@@ -318,6 +382,85 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
 {
     // 从集合中移除释放的键
     pressedKeys.remove(event->key());
+}
+
+void MainWindow::setupSwordQiCollisionCheck()
+{
+    QTimer *swordQiTimer = new QTimer(this);
+    connect(swordQiTimer, &QTimer::timeout, this, &MainWindow::checkSwordQiCollisions);
+    swordQiTimer->start(50); // 每50毫秒检查一次碰撞
+}
+
+void MainWindow::checkSwordQiCollisions()
+{
+    // 使用QList来存储需要删除的剑气，避免在遍历过程中直接删除
+    QList<SwordQi*> swordQisToDelete;
+    
+    // 获取所有剑气
+    QList<SwordQi*> allSwordQis;
+    QList<QGraphicsItem *> items = gameScene->items();
+    for (QGraphicsItem *item : items) {
+        SwordQi *swordQi = dynamic_cast<SwordQi *>(item);
+        if (swordQi) {
+            allSwordQis.append(swordQi);
+        }
+    }
+
+    // 检查剑气之间的碰撞
+    for (int i = 0; i < allSwordQis.size(); ++i) {
+        for (int j = i + 1; j < allSwordQis.size(); ++j) {
+            SwordQi *qi1 = allSwordQis[i];
+            SwordQi *qi2 = allSwordQis[j];
+            
+            // 只有当两个剑气属于不同玩家且碰撞时才处理
+            if (qi1->belongsToPlayer1() != qi2->belongsToPlayer1() && 
+                qi1->collidesWithItem(qi2) &&
+                !swordQisToDelete.contains(qi1) && 
+                !swordQisToDelete.contains(qi2)) {
+                
+                int damage1 = qi1->getDamage();
+                int damage2 = qi2->getDamage();
+                
+                if (damage1 == damage2) {
+                    // 伤害相等，两个都消失
+                    swordQisToDelete.append(qi1);
+                    swordQisToDelete.append(qi2);
+                } else if (damage1 > damage2) {
+                    // 剑气1伤害更大
+                    qi1->setDamage(damage1 - damage2);
+                    swordQisToDelete.append(qi2);
+                } else {
+                    // 剑气2伤害更大
+                    qi2->setDamage(damage2 - damage1);
+                    swordQisToDelete.append(qi1);
+                }
+            }
+        }
+    }
+
+    // 检查剑气与玩家的碰撞
+    for (SwordQi *swordQi : allSwordQis) {
+        if (swordQisToDelete.contains(swordQi)) continue; // 跳过已标记删除的剑气
+        
+        // 检查是否碰撞到玩家1（只有玩家2的剑气才能伤害玩家1）
+        if (swordQi->collidesWithItem(player1) && !swordQi->belongsToPlayer1() && !player1->isDeadState()) {
+            player1->takeDamage(swordQi->getDamage()); // 使用剑气的实际伤害值
+            swordQisToDelete.append(swordQi);
+        }
+        // 检查是否碰撞到玩家2（只有玩家1的剑气才能伤害玩家2）
+        if (swordQi->collidesWithItem(player2) && swordQi->belongsToPlayer1() && !player2->isDeadState()) {
+            player2->takeDamage(swordQi->getDamage()); // 使用剑气的实际伤害值
+            swordQisToDelete.append(swordQi);
+        }
+    }
+    
+    // 在遍历结束后统一删除剑气
+    for (SwordQi *swordQi : swordQisToDelete) {
+        if (swordQi && gameScene->items().contains(swordQi)) {
+            gameScene->removeItem(swordQi);
+            delete swordQi;
+        }
+    }
 }
 
 void MainWindow::checkGameOver()

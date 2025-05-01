@@ -15,7 +15,7 @@ public:
     virtual void jump();
     virtual void moveLeft();
     virtual void moveRight();
-    virtual void attack();
+    virtual void attack();   
     virtual void switchWeapon();
     virtual void update();
     virtual void resetMovement(); // 新增：重置移动状态
@@ -23,6 +23,7 @@ public:
     virtual void takeDamage(int damage); // 新增：处理受伤
     bool hasHitTarget() const { return hasHit; }  // 新增：获取是否已经造成伤害
     void setHitTarget(bool hit) { hasHit = hit; }  // 新增：设置是否已经造成伤害
+    void rangedAttack();
 
     // 属性
     float moveSpeed;      // 基础移动速度
