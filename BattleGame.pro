@@ -10,6 +10,7 @@ CONFIG += c++17
 
 SOURCES += \
     main.cpp \
+    mainmenu.cpp \
     mainwindow.cpp \
     player.cpp \
     swordqi.cpp \
@@ -17,6 +18,7 @@ SOURCES += \
     platform.cpp
 
 HEADERS += \
+    mainmenu.h \
     mainwindow.h \
     player.h \
     swordqi.h \
