@@ -9,13 +9,19 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setupGame();
+    player1SwordQiCooldown = false;  // 初始化玩家1剑气充能冷却
+    player2SwordQiCooldown = false;  // 初始化玩家2剑气充能冷却
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete gameTimer;
     delete swordQiChargeTimer;
-    // 清理平台
+    delete player1;
+    delete player2;
+    delete player1Icon;
+    delete player2Icon;
     for(auto platform : platforms) {
         delete platform;
     }
@@ -26,7 +32,10 @@ void MainWindow::setupGame()
     // 创建游戏场景
     gameScene = new QGraphicsScene(this);
     gameScene->setSceneRect(0, 0, 800, 600);
-    gameScene->setBackgroundBrush(Qt::black);
+    
+    // 设置背景图片
+    QPixmap backgroundPixmap(":/image/place/2.png");
+    gameScene->setBackgroundBrush(backgroundPixmap.scaled(800, 600, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
 
     // 创建游戏视图
     gameView = new QGraphicsView(gameScene, this);
@@ -113,48 +122,65 @@ void MainWindow::createPlatforms()
     platforms.append(ground);
 
     // 创建一些浮动平台
-    Platform* platform1 = new Platform(100, 400, 200, 10);
-    Platform* platform2 = new Platform(500, 400, 200, 10);
-    Platform* platform3 = new Platform(100, 150, 200, 10);
-    Platform* platform4 = new Platform(500, 150, 200, 10);
-    Platform* platform5 = new Platform(300, 300, 200, 10);
+    Platform* platform1 = new Platform(78, 382, 182, 13);
+    Platform* platform2 = new Platform(542, 382, 182, 13);
+    Platform* platform3 = new Platform(0, 288, 165, 13);
+    Platform* platform4 = new Platform(635, 288, 165, 13);
+    Platform* platform5 = new Platform(260, 288, 280, 13);
+    Platform* platform6 = new Platform(0, 475, 165, 13);
+    Platform* platform7 = new Platform(635, 475, 165, 13);
+    Platform* platform8 = new Platform(260, 475, 280, 13);
+    Platform* platform9 = new Platform(0, 195, 75, 13);
+    Platform* platform10 = new Platform(725, 195, 75, 13);
 
     gameScene->addItem(platform1);
     gameScene->addItem(platform2);
     gameScene->addItem(platform3);
     gameScene->addItem(platform4);
     gameScene->addItem(platform5);
+    gameScene->addItem(platform6);
+    gameScene->addItem(platform7);
+    gameScene->addItem(platform8);
+    gameScene->addItem(platform9);
+    gameScene->addItem(platform10);
 
     platforms.append(platform1);
     platforms.append(platform2);
     platforms.append(platform3);
     platforms.append(platform4);
     platforms.append(platform5);
+    platforms.append(platform6);
+    platforms.append(platform7);
+    platforms.append(platform8);
+    platforms.append(platform9);
+    platforms.append(platform10);
 }
 
 void MainWindow::initializePlayers()
 {
-    // 创建两个不同的玩家对象
+    // 创建玩家1
     player1 = new Player1();
-    player2 = new Player2();
-    
-    // 设置初始位置
     player1->setPos(100, 300);
-    player2->setPos(600, 300);
-    
-    // 添加到场景
     gameScene->addItem(player1);
+
+    // 创建玩家2
+    player2 = new Player2();
+    player2->setPos(600, 300);
     gameScene->addItem(player2);
-    
-    // 强制更新一次动画帧，确保初始朝向正确
-    // 这里我们手动调用一次updateAnimation，确保初始状态正确
-    QTimer::singleShot(0, [this]() {
-        // 确保Player1朝向右边
-        player1->setPixmap(player1->getCurrentFrame());
-        
-        // 确保Player2朝向左边
-        player2->setPixmap(player2->getCurrentFrame());
-    });
+
+    // 创建并设置玩家1图标
+    QPixmap p1Icon(":/image/person1/P1.png");  // 假设图标在资源文件中
+    p1Icon = p1Icon.scaled(30, 30, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    player1Icon = new QGraphicsPixmapItem(p1Icon);
+    player1Icon->setParentItem(player1);
+    player1Icon->setPos(30, -20);  // 设置相对于玩家的位置，使其显示在头顶
+
+    // 创建并设置玩家2图标
+    QPixmap p2Icon(":/image/person1/P2.png");  // 假设图标在资源文件中
+    p2Icon = p2Icon.scaled(30, 30, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    player2Icon = new QGraphicsPixmapItem(p2Icon);
+    player2Icon->setParentItem(player2);
+    player2Icon->setPos(30, -20);  // 设置相对于玩家的位置，使其显示在头顶
 }
 
 void MainWindow::updateGame()
@@ -210,15 +236,22 @@ void MainWindow::checkCollisions()
             QRectF platformRect = platform->boundingRect();
             platformRect.translate(platform->pos());
 
-            // 检测脚部是否在平台上方
-            if(feetRect1.bottom() <= platformRect.top() + 10) {
+            // 检测脚部是否在平台上方，增加容错范围
+            if(feetRect1.bottom() <= platformRect.top() + 15) {
                 // 如果玩家正在下落或静止，则允许落在平台上
                 if(player1->getVerticalSpeed() >= 0 || player1->isGroundedState()) {
-                    // 更精确的碰撞检测
+                    // 更精确的碰撞检测，考虑水平方向的偏移
                     if(feetRect1.intersects(platformRect)) {
-                        player1->setPos(player1->x(), platformRect.top() - player1->boundingRect().height() + 5);
-                        player1->setGrounded(true);
-                        player1OnPlatform = true;
+                        // 确保玩家不会卡在平台边缘，增加水平检测的容错范围
+                        if (player1->x() + player1->boundingRect().width() - 5 > platformRect.left() &&
+                            player1->x() + 5 < platformRect.right()) {
+                            // 如果玩家正在下落，确保完全落在平台上
+                            if (player1->getVerticalSpeed() > 0) {
+                                player1->setPos(player1->x(), platformRect.top() - player1->boundingRect().height() + 5);
+                            }
+                            player1->setGrounded(true);
+                            player1OnPlatform = true;
+                        }
                     }
                 }
             }
@@ -230,14 +263,21 @@ void MainWindow::checkCollisions()
             QRectF platformRect = platform->boundingRect();
             platformRect.translate(platform->pos());
 
-            // 检测脚部是否在平台上方
-            if(feetRect2.bottom() <= platformRect.top() + 10) {
+            // 检测脚部是否在平台上方，增加容错范围
+            if(feetRect2.bottom() <= platformRect.top() + 15) {
                 // 如果玩家正在下落或静止，则允许落在平台上
                 if(player2->getVerticalSpeed() >= 0 || player2->isGroundedState()) {
                     if(feetRect2.intersects(platformRect)) {
-                        player2->setPos(player2->x(), platformRect.top() - player2->boundingRect().height() + 5);
-                        player2->setGrounded(true);
-                        player2OnPlatform = true;
+                        // 确保玩家不会卡在平台边缘，增加水平检测的容错范围
+                        if (player2->x() + player2->boundingRect().width() - 5 > platformRect.left() &&
+                            player2->x() + 5 < platformRect.right()) {
+                            // 如果玩家正在下落，确保完全落在平台上
+                            if (player2->getVerticalSpeed() > 0) {
+                                player2->setPos(player2->x(), platformRect.top() - player2->boundingRect().height() + 5);
+                            }
+                            player2->setGrounded(true);
+                            player2OnPlatform = true;
+                        }
                     }
                 }
             }
@@ -337,18 +377,28 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             player2->attack();
         }
         if (event->key() == Qt::Key_K) {
-            // 检查玩家1是否有剑气可用
-            if (player1SwordQiCharges > 0) {
+            // 检查玩家1是否有剑气可用，并且不在冷却时间内
+            if (player1SwordQiCharges > 0 && !player1SwordQiCooldown) {
                 player1->rangedAttack();
                 player1SwordQiCharges--;
+                player1SwordQiCooldown = true;
+                // 设置冷却时间
+                QTimer::singleShot(500, this, [this]() {
+                    player1SwordQiCooldown = false;
+                });
                 updateHealthDisplay();
             }
         }
         if (event->key() == Qt::Key_2) {
-            // 检查玩家2是否有剑气可用
-            if (player2SwordQiCharges > 0) {
+            // 检查玩家2是否有剑气可用，并且不在冷却时间内
+            if (player2SwordQiCharges > 0 && !player2SwordQiCooldown) {
                 player2->rangedAttack();
                 player2SwordQiCharges--;
+                player2SwordQiCooldown = true;
+                // 设置冷却时间
+                QTimer::singleShot(500, this, [this]() {
+                    player2SwordQiCooldown = false;
+                });
                 updateHealthDisplay();
             }
         }

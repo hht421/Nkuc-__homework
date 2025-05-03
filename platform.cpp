@@ -7,12 +7,12 @@ Platform::Platform(double x, double y, double width, double height)
 {
     setPos(x, y);
 
-    // 设置填充色
-    QBrush brush(Qt::gray);
+    // 设置填充色为透明
+    QBrush brush(Qt::transparent);
     setBrush(brush);
 
-    // 设置边框
-    QPen pen(Qt::black);
+    // 设置边框为透明
+    QPen pen(Qt::transparent);
     pen.setWidth(2);
     setPen(pen);
 }

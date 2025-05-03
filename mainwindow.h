@@ -43,6 +43,8 @@ private:
     QSet<int> pressedKeys;  // 追踪按下的键
     QGraphicsTextItem *player1HealthText;
     QGraphicsTextItem *player2HealthText;
+    QGraphicsPixmapItem *player1Icon;  // 玩家1图标
+    QGraphicsPixmapItem *player2Icon;  // 玩家2图标
     bool gameOver;
     bool player1Moving;
     bool player2Moving;
@@ -55,6 +57,8 @@ private:
     QGraphicsTextItem *player2SwordQiText; // 玩家2剑气次数显示
     const int MAX_SWORD_QI_CHARGES = 5; // 最大剑气存储次数
     const int SWORD_QI_CHARGE_TIME = 10000; // 充能时间（毫秒）
+    bool player1SwordQiCooldown;  // 玩家1剑气充能冷却
+    bool player2SwordQiCooldown;  // 玩家2剑气充能冷却
     
     void setupGame();
     void initializePlayers();

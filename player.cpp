@@ -8,8 +8,8 @@
 Player::Player(bool isPlayer1) : QObject(), QGraphicsPixmapItem()
 {
     // 初始化属性
-    moveSpeed = 8.0f;     // 移动速度
-    jumpForce = 15.0f;    // 增加跳跃力
+    moveSpeed = 5.5f;     // 移动速度
+    jumpForce = 12.0f;    // 增加跳跃力
     gravity = 0.6f;       // 减小重力
     maxFallSpeed = 15.0f;
     health = 100;

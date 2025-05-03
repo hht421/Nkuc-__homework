@@ -9,9 +9,9 @@ SwordQi::SwordQi(bool facingRight, bool isPlayer1, QGraphicsItem *parent)
     QPixmap pixmap;
     // 根据玩家选择不同的剑气图片
     if (isPlayer1) {
-        pixmap = QPixmap(":/image/weapon/jianqi-1(1).png"); // 蓝色剑气
-    } else {
         pixmap = QPixmap(":/image/weapon/jianqi-1(2).png"); // 红色剑气
+    } else {
+        pixmap = QPixmap(":/image/weapon/jianqi-1(1).png"); // 蓝色剑气
     }
 
     // 根据朝向反转图片

@@ -14,9 +14,9 @@ MainMenu::MainMenu(QWidget *parent) : QWidget(parent)
     startGameButton = new QPushButton(this);
     gameIntroductionButton = new QPushButton(this);
 
-    // 调试阶段设置按钮样式，显示按钮位置
-    startGameButton->setStyleSheet("background-color: rgba(255, 0, 0, 100); border: 2px solid blue;");
-    gameIntroductionButton->setStyleSheet("background-color: rgba(0, 255, 0, 100); border: 2px solid blue;");
+    // 设置按钮样式为透明
+    startGameButton->setStyleSheet("background-color: transparent; border: none;");
+    gameIntroductionButton->setStyleSheet("background-color: transparent; border: none;");
 
     // 调整按钮位置和大小（初始值，根据实际情况修改）
     startGameButton->setGeometry(187, 463, 190, 51); // 开始游戏按钮位置和大小
