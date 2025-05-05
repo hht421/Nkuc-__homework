@@ -57,5 +57,10 @@ void MainMenu::onStartGameClicked()
 void MainMenu::onGameIntroductionClicked()
 {
     // 弹出游戏介绍窗口
-    QMessageBox::information(this, "游戏介绍", "待填写");
+    QMessageBox::information(this, "游戏介绍", "本游戏分为“经典模式”和“进化模式”。经典模式玩家1用wasd操控，j近战攻击k远程攻击。玩家2用上下左右操控，1近战攻击2远程攻击。进化模式中场地内掉落随机能量球，红色为永久增益蓝色为限时增益。具体增益还请游戏中实地体验哦。");
+}
+
+void MainMenu::onShowMainMenu()
+{
+    this->show();
 }

@@ -1,5 +1,6 @@
 #include "player.h"
 #include "swordqi.h"
+#include "skillball.h"
 #include <QGraphicsScene>
 #include <QPixmap>
 #include <QDir>
@@ -8,9 +9,9 @@
 Player::Player(bool isPlayer1) : QObject(), QGraphicsPixmapItem()
 {
     // 初始化属性
-    moveSpeed = 5.5f;     // 移动速度
-    jumpForce = 12.0f;    // 增加跳跃力
-    gravity = 0.6f;       // 减小重力
+    moveSpeed = 3.0f;     // 移动速度
+    jumpForce = 7.0f;     // 跳跃力
+    gravity = 0.2f;       // 重力
     maxFallSpeed = 15.0f;
     health = 100;
     isGrounded = false;   // 初始状态设为未着地
@@ -43,6 +44,23 @@ Player::Player(bool isPlayer1) : QObject(), QGraphicsPixmapItem()
         canAttack = true;  // 冷却结束，可以再次攻击
     });
     
+    // 初始化技能相关
+    speedBoostActive = false;
+    jumpBoostActive = false;
+    freeSwordQiActive = false;
+    
+    originalMoveSpeed = moveSpeed;
+    originalJumpForce = jumpForce;
+    
+    // 创建技能计时器
+    speedBoostTimer = new QTimer(this);
+    jumpBoostTimer = new QTimer(this);
+    freeSwordQiTimer = new QTimer(this); 
+    
+    connect(speedBoostTimer, &QTimer::timeout, this, &Player::removeSpeedBoost);
+    connect(jumpBoostTimer, &QTimer::timeout, this, &Player::removeJumpBoost);
+    connect(freeSwordQiTimer, &QTimer::timeout, this, &Player::removeFreeSwordQi);
+    
     // 加载动画帧
     loadAnimationFrames();
 }
@@ -52,6 +70,9 @@ Player::~Player()
     // 智能指针会自动清理武器
     delete animationTimer;
     delete attackCooldownTimer;
+    delete speedBoostTimer;
+    delete jumpBoostTimer;
+    delete freeSwordQiTimer;
 }
 
 void Player::loadAnimationFrames()
@@ -266,11 +287,17 @@ void Player::rangedAttack()
     // 创建剑气
     SwordQi *swordQi = new SwordQi(facingRight, isPlayer1);
     
+    //向下偏移量
+    int verticalOffset = 20; 
+
+    // 设置剑气位置
     // 设置剑气位置
     if (facingRight) {
-        swordQi->setPos(x() + boundingRect().width(), y());
+        // 在原来的基础上，y 坐标增加偏移量
+        swordQi->setPos(x() + boundingRect().width(), y() + verticalOffset); 
     } else {
-        swordQi->setPos(x() - swordQi->boundingRect().width(), y());
+        // 在原来的基础上，y 坐标增加偏移量
+        swordQi->setPos(x() - swordQi->boundingRect().width(), y() + verticalOffset); 
     }
     scene()->addItem(swordQi);
 
@@ -313,8 +340,8 @@ void Player::update()
         setPos(x(), 0);
         verticalSpeed = 0;
     }
-    if (y() > 550) { // 600 - 50(玩家高度)
-        setPos(x(), 550);
+    if (y() > 600) { // 600 - 50(玩家高度)
+        setPos(x(), 600);
         isGrounded = true;
         verticalSpeed = 0;
     }
@@ -375,6 +402,153 @@ QPixmap Player::getCurrentFrame() const
     }
     
     return currentPixmap;
+}
+
+void Player::applySkill(SkillBall::SkillType type)
+{
+    switch(type) {
+        case SkillBall::HEAL:
+            health = qMin(health + 30, 100);
+            break;
+
+        case SkillBall::SPEED_BOOST:
+            if (!speedBoostActive) {
+                moveSpeed *= 1.5; // 增加50%移动速度
+                speedBoostActive = true;
+                speedBoostTimer->start(30000); // 30秒后恢复
+            }
+            break;
+
+        case SkillBall::JUMP_BOOST:
+            if (!jumpBoostActive) {
+                jumpForce *= 1.5; // 增加50%跳跃力
+                jumpBoostActive = true;
+                jumpBoostTimer->start(30000); // 30秒后恢复
+            }
+            break;
+
+        case SkillBall::FREE_SWORD_QI:
+            if (!freeSwordQiActive) {
+                freeSwordQiActive = true;
+                freeSwordQiTimer->start(30000); // 30秒后恢复
+            }
+            break;
+
+        case SkillBall::SHORT_ATTACK_BOOST:
+            if (!shortAttackBoostActive) {
+                for (auto& weapon : weapons) {
+                    if (weapon->type == weapon::MELEE) {
+                        weapon->damage = static_cast<int>(weapon->damage * shortAttackBoostMultiplier);
+                    }
+                }
+                shortAttackBoostActive = true;
+                shortAttackBoostTimer->start(shortAttackBoostDuration);
+            }
+            break;
+
+        case SkillBall::PERMANENT_ATTACK_BOOST:
+            for (auto& weapon : weapons) {
+                weapon->damage = static_cast<int>(weapon->damage * permanentAttackBoostMultiplier);
+            }
+            break;
+
+        case SkillBall::INCREASE_CURRENT_HP:
+            health = qMin(health + increaseHpAmount, maxHealth);
+            break;
+
+        case SkillBall::INCREASE_MAX_HP:
+            maxHealth += increaseMaxHpAmount;
+            health = qMin(health, maxHealth);
+            break;
+
+        case SkillBall::SHORT_JUMP_BOOST:
+            if (!jumpBoostActive) {
+                jumpForce *= shortJumpBoostMultiplier;
+                jumpBoostActive = true;
+                jumpBoostTimer->start(30000);
+            }
+            break;
+
+        case SkillBall::PERMANENT_JUMP_BOOST:
+            jumpForce *= permanentJumpBoostMultiplier;
+            break;
+
+        case SkillBall::PERMANENT_SPEED_BOOST: //永久速度增加
+            moveSpeed *= 1.1; // 增加10%移动速度
+            originalMoveSpeed = moveSpeed; // 更新原始速度
+            break;
+    }
+
+}
+void Player::updateShortAttackBoostDisplay() {
+    if (shortAttackBoostActive) {
+        int increase = getShortAttackBoostIncrease();
+        int remainingTime = getShortAttackBoostRemainingTime() / 1000; // 转换为秒
+        QString text = QString("伤害+%1 剩余时间: %2s").arg(increase).arg(remainingTime);
+        shortAttackBoostText->setPlainText(text);
+    } else {
+        shortAttackBoostText->setPlainText("");
+    }
+}
+
+void Player::removeShortAttackBoost()
+{
+    if (shortAttackBoostActive) {
+        for (auto& weapon : weapons) {
+            if (weapon->type == weapon::MELEE) {
+                weapon->damage = static_cast<int>(weapon->damage / shortAttackBoostMultiplier);
+            }
+        }
+        shortAttackBoostActive = false;
+    }
+}
+
+#include "player.h"
+// ... 其他代码 ...
+
+// 实现 getShortAttackBoostRemainingTime 函数
+int Player::getShortAttackBoostRemainingTime() const
+{
+    if (shortAttackBoostActive && shortAttackBoostTimer) {
+        return shortAttackBoostTimer->remainingTime();
+    }
+    return 0;
+}
+
+// 实现 getShortAttackBoostIncrease 函数
+int Player::getShortAttackBoostIncrease() const
+{
+    if (shortAttackBoostActive) {
+        int originalDamage = 0;
+        int boostedDamage = 0;
+        for (const auto& weapon : weapons) {
+            if (weapon->type == weapon::MELEE) {
+                originalDamage = static_cast<int>(weapon->damage / shortAttackBoostMultiplier);
+                boostedDamage = weapon->damage;
+                break;
+            }
+        }
+        return boostedDamage - originalDamage;
+    }
+    return 0;
+}
+
+
+void Player::removeSpeedBoost()
+{
+    moveSpeed = originalMoveSpeed;
+    speedBoostActive = false;
+}
+
+void Player::removeJumpBoost()
+{
+    jumpForce = originalJumpForce;
+    jumpBoostActive = false;
+}
+
+void Player::removeFreeSwordQi()
+{
+    freeSwordQiActive = false;
 }
 
 // 派生类：Player1

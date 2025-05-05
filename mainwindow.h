@@ -8,6 +8,8 @@
 #include <QSet>
 #include "player.h"
 #include "platform.h"
+#include "skillball.h"
+#include "gameoverdialog.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -22,6 +24,11 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    
+    void onClassicModeSelected();
+    void onEvolutionModeSelected();
+    signals:
+    void showMainMenu(); // 添加信号声明
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -31,6 +38,10 @@ private slots:
     void updateGame();
     void checkSwordQiCollisions();
     void updateSwordQiCharges();
+    void updateSkillBalls();
+    void onGameOver();
+    void onReturnToMainMenu();
+    void onExitGame();
 
 private:
     Ui::MainWindow *ui;
@@ -60,6 +71,10 @@ private:
     bool player1SwordQiCooldown;  // 玩家1剑气充能冷却
     bool player2SwordQiCooldown;  // 玩家2剑气充能冷却
     
+    // 进化模式相关
+    QTimer *skillBallSpawnTimer;
+    QList<SkillBall*> skillBalls;
+    
     void setupGame();
     void initializePlayers();
     void createPlatforms();
@@ -68,5 +83,9 @@ private:
     void updateHealthDisplay();
     void checkGameOver();
     void setupSwordQiCollisionCheck();
+    void spawnSkillBall();
+    void checkSkillBallCollisions();
+
+    GameOverDialog *gameOverDialog;
 };
 #endif // MAINWINDOW_H

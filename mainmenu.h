@@ -21,6 +21,7 @@ signals:
 private slots:
     void onStartGameClicked();
     void onGameIntroductionClicked();
+    void onShowMainMenu();
 
 private:
     QPushButton *startGameButton;

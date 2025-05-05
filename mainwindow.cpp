@@ -1,7 +1,9 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "swordqi.h"
+#include "skillball.h"
 #include <QKeyEvent>
+#include <QRandomGenerator>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -11,6 +13,15 @@ MainWindow::MainWindow(QWidget *parent)
     setupGame();
     player1SwordQiCooldown = false;  // 初始化玩家1剑气充能冷却
     player2SwordQiCooldown = false;  // 初始化玩家2剑气充能冷却
+    
+    // 初始化技能球相关
+    skillBallSpawnTimer = new QTimer(this);
+    connect(skillBallSpawnTimer, &QTimer::timeout, this, &MainWindow::spawnSkillBall);
+
+    //结束游戏相关
+    gameOverDialog = new GameOverDialog(this);
+    connect(gameOverDialog, &GameOverDialog::returnToMainMenuClicked, this, &MainWindow::onReturnToMainMenu);
+    connect(gameOverDialog, &GameOverDialog::exitGameClicked, this, &MainWindow::onExitGame);
 }
 
 MainWindow::~MainWindow()
@@ -25,6 +36,7 @@ MainWindow::~MainWindow()
     for(auto platform : platforms) {
         delete platform;
     }
+    delete gameOverDialog;
 }
 
 void MainWindow::setupGame()
@@ -74,13 +86,13 @@ void MainWindow::setupGame()
 
     // 初始化血量显示
     player1HealthText = new QGraphicsTextItem();
-    player1HealthText->setDefaultTextColor(Qt::blue);
+    player1HealthText->setDefaultTextColor(Qt::red);
     player1HealthText->setFont(QFont("Arial", 16));
     player1HealthText->setPos(20, 20);
     gameScene->addItem(player1HealthText);
     
     player2HealthText = new QGraphicsTextItem();
-    player2HealthText->setDefaultTextColor(Qt::red);
+    player2HealthText->setDefaultTextColor(Qt::blue);
     player2HealthText->setFont(QFont("Arial", 16));
     player2HealthText->setPos(700, 20);
     gameScene->addItem(player2HealthText);
@@ -116,7 +128,7 @@ void MainWindow::setupGame()
 void MainWindow::createPlatforms()
 {
     // 创建主地面（最长的地面）
-    Platform* ground = new Platform(0, 550, 800, 50);
+    Platform* ground = new Platform(0, 600, 800, 50);
     ground->setData(0, "ground"); // 设置地面标识
     gameScene->addItem(ground);
     platforms.append(ground);
@@ -196,6 +208,10 @@ void MainWindow::updateGame()
     checkCollisions();
     updateHealthDisplay();
     checkGameOver();
+    
+    // 检查技能球碰撞
+    checkSkillBallCollisions();
+    updateSkillBalls();  // 添加技能球更新
 }
 
 void MainWindow::updateHealthDisplay()
@@ -532,5 +548,109 @@ void MainWindow::checkGameOver()
         
         winnerText->setPos(250, 250);
         gameScene->addItem(winnerText);
+
+        // 调用 onGameOver 函数弹出游戏结束的弹窗
+        onGameOver();
     }
+}
+
+void MainWindow::onClassicModeSelected()
+{
+    // 经典模式不需要技能球
+    skillBallSpawnTimer->stop();
+    qDeleteAll(skillBalls);
+    skillBalls.clear();
+    
+    setupGame();
+}
+
+void MainWindow::onEvolutionModeSelected()
+{
+    // 清理现有的技能球
+    for (auto ball : skillBalls) {
+        if (ball) {
+            gameScene->removeItem(ball);
+            delete ball;
+        }
+    }
+    skillBalls.clear();
+    
+    // 启动技能球生成
+    skillBallSpawnTimer->start(10000); // 每10秒生成一个技能球
+    
+    // 重置游戏状态
+    setupGame();
+}
+
+void MainWindow::spawnSkillBall()
+{
+    // 随机选择技能类型
+    SkillBall::SkillType type = static_cast<SkillBall::SkillType>(QRandomGenerator::global()->bounded(11));
+
+    // 随机位置（确保在平台范围内）
+    int x = QRandomGenerator::global()->bounded(100, 700);
+    int y = QRandomGenerator::global()->bounded(100, 500);
+
+    SkillBall *ball = new SkillBall(type);
+    ball->setPos(x, y);
+    gameScene->addItem(ball);
+    skillBalls.append(ball);
+}
+
+void MainWindow::checkSkillBallCollisions()
+{
+    for (auto it = skillBalls.begin(); it != skillBalls.end();) {
+        SkillBall *ball = *it;
+        
+        // 检查与玩家1的碰撞
+        if (ball->collidesWithItem(player1)) {
+            player1->applySkill(ball->getType());
+            gameScene->removeItem(ball);
+            delete ball;
+            it = skillBalls.erase(it);
+            continue;
+        }
+        
+        // 检查与玩家2的碰撞
+        if (ball->collidesWithItem(player2)) {
+            player2->applySkill(ball->getType());
+            gameScene->removeItem(ball);
+            delete ball;
+            it = skillBalls.erase(it);
+            continue;
+        }
+        
+        ++it;
+    }
+}
+
+void MainWindow::updateSkillBalls()
+{
+    // 更新所有技能球的状态
+    for (auto ball : skillBalls) {
+        if (ball) {
+            // 检查技能球是否超出场景范围
+            if (ball->x() < 0 || ball->x() > 800 || ball->y() < 0 || ball->y() > 600) {
+                gameScene->removeItem(ball);
+                skillBalls.removeOne(ball);
+                delete ball;
+            }
+        }
+    }
+}
+
+void MainWindow::onGameOver()
+{
+    gameOverDialog->show();
+}
+
+void MainWindow::onReturnToMainMenu()
+{
+    this->hide();
+    emit showMainMenu();
+}
+
+void MainWindow::onExitGame()
+{
+    QApplication::quit();
 }

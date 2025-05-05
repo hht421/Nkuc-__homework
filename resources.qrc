@@ -76,5 +76,14 @@
         <file>image/weapon/jianqi-1(2).png</file>
         <file>image/place/1.png</file>
         <file>image/place/2.png</file>
+        <file>image/skillball/attack_more_blue.png</file>
+        <file>image/skillball/attack_more_red.png</file>
+        <file>image/skillball/heal_blue.png</file>
+        <file>image/skillball/heal_red.png</file>
+        <file>image/skillball/jump_blue.png</file>
+        <file>image/skillball/jump_red.png</file>
+        <file>image/skillball/speed_blue.png</file>
+        <file>image/skillball/speed_red.png</file>
+        <file>image/skillball/swordair_limitless.png</file>
     </qresource>
 </RCC>

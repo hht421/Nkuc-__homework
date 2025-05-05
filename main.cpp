@@ -16,13 +16,13 @@ int main(int argc, char *argv[])
     gameWindow.resize(800, 600);
 
     QObject::connect(&menu, &MainMenu::startGame, [&](const QString& mode) {
+        menu.hide();
         if (mode == "经典模式") {
-            menu.hide();
-            gameWindow.show();
+            gameWindow.onClassicModeSelected();
         } else if (mode == "进化模式") {
-            // 这里可以添加进化模式的启动逻辑
-            QMessageBox::information(nullptr, "提示", "进化模式暂未开放，敬请期待！");
+            gameWindow.onEvolutionModeSelected();
         }
+        gameWindow.show();
     });
 
     return a.exec();
