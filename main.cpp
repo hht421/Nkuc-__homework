@@ -25,5 +25,8 @@ int main(int argc, char *argv[])
         gameWindow.show();
     });
 
+    // 确保信号和槽的连接
+    QObject::connect(&gameWindow, &MainWindow::showMainMenu, &menu, &MainMenu::onShowMainMenu);
+
     return a.exec();
 }

@@ -1,3 +1,4 @@
+// mainmenu.cpp
 #include "mainmenu.h"
 #include <QPixmap>
 
@@ -62,5 +63,5 @@ void MainMenu::onGameIntroductionClicked()
 
 void MainMenu::onShowMainMenu()
 {
-    this->show();
+    this->show(); // 显示主菜单
 }

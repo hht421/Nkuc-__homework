@@ -14,11 +14,12 @@ class MainMenu : public QWidget
 public:
     explicit MainMenu(QWidget *parent = nullptr);
     ~MainMenu() override;
+    void showMainMenu();
 
 signals:
     void startGame(const QString& mode);
 
-private slots:
+public slots: // 修改为 public slots
     void onStartGameClicked();
     void onGameIntroductionClicked();
     void onShowMainMenu();
